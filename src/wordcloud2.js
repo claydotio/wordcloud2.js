@@ -7,6 +7,14 @@
  */
 
 'use strict';
+var Canvas = require('canvas');
+var document = {
+  createElement: function() {
+    return new Canvas();
+  }
+};
+
+var window = typeof window === 'undefined' ? {} : window;
 
 // setImmediate
 if (!window.setImmediate) {
@@ -67,7 +75,7 @@ if (!window.setImmediate) {
     })() ||
     // fallback
     function setImmediateFallback(fn) {
-      window.setTimeout(fn, 0);
+      setTimeout(fn, 0);
     };
   })();
 }
@@ -90,60 +98,12 @@ if (!window.clearImmediate) {
 
   // Check if WordCloud can run on this browser
   var isSupported = (function isSupported() {
-    var canvas = document.createElement('canvas');
-    if (!canvas || !canvas.getContext) {
-      return false;
-    }
-
-    var ctx = canvas.getContext('2d');
-    if (!ctx) {
-      return false;
-    }
-    if (!ctx.getImageData) {
-      return false;
-    }
-    if (!ctx.fillText) {
-      return false;
-    }
-
-    if (!Array.prototype.some) {
-      return false;
-    }
-    if (!Array.prototype.push) {
-      return false;
-    }
-
     return true;
   }());
 
   // Find out if the browser impose minium font size by
   // drawing small texts on a canvas and measure it's width.
   var minFontSize = (function getMinFontSize() {
-    if (!isSupported) {
-      return;
-    }
-
-    var ctx = document.createElement('canvas').getContext('2d');
-
-    // start from 20
-    var size = 20;
-
-    // two sizes to measure
-    var hanWidth, mWidth;
-
-    while (size) {
-      ctx.font = size.toString(10) + 'px sans-serif';
-      if ((ctx.measureText('\uFF37').width === hanWidth) &&
-          (ctx.measureText('m').width) === mWidth) {
-        return (size + 1);
-      }
-
-      hanWidth = ctx.measureText('\uFF37').width;
-      mWidth = ctx.measureText('m').width;
-
-      size--;
-    }
-
     return 0;
   })();
 
@@ -171,9 +131,10 @@ if (!window.clearImmediate) {
         if (!elements[i]) {
           throw 'The element id specified is not found.';
         }
-      } else if (!el.tagName && !el.appendChild) {
-        throw 'You must pass valid HTML elements, or ID of the element.';
       }
+      // else if (!el.tagName) {
+      //   throw 'You must pass valid HTML elements, or ID of the element.';
+      // }
     });
 
     /* Default values to be overwritten by options object */
@@ -261,23 +222,13 @@ if (!window.clearImmediate) {
         */
 
         case 'diamond':
+        case 'square':
           // http://www.wolframalpha.com/input/?i=plot+r+%3D+1%2F%28cos%28mod+
           // %28t%2C+PI%2F2%29%29%2Bsin%28mod+%28t%2C+PI%2F2%29%29%29%2C+t+%3D
           // +0+..+2*PI
           settings.shape = function shapeSquare(theta) {
             var thetaPrime = theta % (2 * Math.PI / 4);
             return 1 / (Math.cos(thetaPrime) + Math.sin(thetaPrime));
-          };
-          break;
-
-        case 'square':
-          // http://www.wolframalpha.com/input/?i=plot+r+%3D+min(1%2Fabs(cos(t
-          // )),1%2Fabs(sin(t)))),+t+%3D+0+..+2*PI
-          settings.shape = function shapeSquare(theta) {
-            return Math.min(
-              1 / Math.abs(Math.cos(theta)),
-              1 / Math.abs(Math.sin(theta))
-            );
           };
           break;
 
@@ -493,10 +444,9 @@ if (!window.clearImmediate) {
       }
 
       if (rotationSteps > 0) {
-        // Min rotation + zero or more steps * span of one step
         return minRotation +
-          Math.floor(Math.random() * rotationSteps) *
-          rotationRange / (rotationSteps - 1);
+          (1 / Math.floor((Math.random() * rotationSteps) + 1)) *
+          rotationRange;
       }
       else {
         return minRotation + Math.random() * rotationRange;
@@ -566,8 +516,8 @@ if (!window.clearImmediate) {
       var width = cgw * g;
       var height = cgh * g;
 
-      fcanvas.setAttribute('width', width);
-      fcanvas.setAttribute('height', height);
+      fcanvas.width = width;
+      fcanvas.height = height;
 
       if (debug) {
         // Attach fcanvas to the DOM
@@ -966,19 +916,19 @@ if (!window.clearImmediate) {
     /* Send DOM event to all elements. Will stop sending event and return
        if the previous one is canceled (for cancelable events). */
     var sendEvent = function sendEvent(type, cancelable, detail) {
-      if (cancelable) {
-        return !elements.some(function(el) {
-          var evt = document.createEvent('CustomEvent');
-          evt.initCustomEvent(type, true, cancelable, detail || {});
-          return !el.dispatchEvent(evt);
-        }, this);
-      } else {
-        elements.forEach(function(el) {
-          var evt = document.createEvent('CustomEvent');
-          evt.initCustomEvent(type, true, cancelable, detail || {});
-          el.dispatchEvent(evt);
-        }, this);
-      }
+      // if (cancelable) {
+      //   return !elements.some(function(el) {
+      //     var evt = document.createEvent('CustomEvent');
+      //     evt.initCustomEvent(type, true, cancelable, detail || {});
+      //     return !el.dispatchEvent(evt);
+      //   }, this);
+      // } else {
+      //   elements.forEach(function(el) {
+      //     var evt = document.createEvent('CustomEvent');
+      //     evt.initCustomEvent(type, true, cancelable, detail || {});
+      //     el.dispatchEvent(evt);
+      //   }, this);
+      // }
     };
 
     /* Start drawing on a canvas */
@@ -998,9 +948,9 @@ if (!window.clearImmediate) {
 
       // Sending a wordcloudstart event which cause the previous loop to stop.
       // Do nothing if the event is canceled.
-      if (!sendEvent('wordcloudstart', true)) {
-        return;
-      }
+      // if (!sendEvent('wordcloudstart', true)) {
+      //   return;
+      // }
 
       // Determine the center of the word cloud
       center = (settings.origin) ?
@@ -1093,52 +1043,48 @@ if (!window.clearImmediate) {
           infoGrid[gx] = [];
         }
 
-        if (settings.hover) {
-          canvas.addEventListener('mousemove', wordcloudhover);
-        }
-
-        var touchend = function (e) {
-          e.preventDefault();
-        };
-
-        if (settings.click) {
-          canvas.addEventListener('click', wordcloudclick);
-          canvas.addEventListener('touchstart', wordcloudclick);
-          canvas.addEventListener('touchend', touchend);
-          canvas.style.webkitTapHighlightColor = 'rgba(0, 0, 0, 0)';
-        }
-
-        canvas.addEventListener('wordcloudstart', function stopInteraction() {
-          canvas.removeEventListener('wordcloudstart', stopInteraction);
-
-          canvas.removeEventListener('mousemove', wordcloudhover);
-          canvas.removeEventListener('click', wordcloudclick);
-          canvas.removeEventListener('touchstart', wordcloudclick);
-          canvas.removeEventListener('touchend', touchend);
-          hovered = undefined;
-        });
+        // if (settings.hover) {
+        //   canvas.addEventListener('mousemove', wordcloudhover);
+        // }
+        //
+        // if (settings.click) {
+        //   canvas.addEventListener('click', wordcloudclick);
+        //   canvas.addEventListener('touchstart', wordcloudclick);
+        //   canvas.addEventListener('touchend', function (e) {
+        //     e.preventDefault();
+        //   });
+        //   canvas.style.webkitTapHighlightColor = 'rgba(0, 0, 0, 0)';
+        // }
+        //
+        // canvas.addEventListener('wordcloudstart', function stopInteraction() {
+        //   canvas.removeEventListener('wordcloudstart', stopInteraction);
+        //
+        //   canvas.removeEventListener('mousemove', wordcloudhover);
+        //   canvas.removeEventListener('click', wordcloudclick);
+        //   hovered = undefined;
+        // });
       }
 
       i = 0;
       var loopingFunction, stoppingFunction;
       if (settings.wait !== 0) {
-        loopingFunction = window.setTimeout;
-        stoppingFunction = window.clearTimeout;
+        loopingFunction = setTimeout;
+        stoppingFunction = clearTimeout;
       } else {
-        loopingFunction = window.setImmediate;
-        stoppingFunction = window.clearImmediate;
+        loopingFunction = setImmediate;
+        stoppingFunction = clearImmediate;
       }
 
       var addEventListener = function addEventListener(type, listener) {
-        elements.forEach(function(el) {
-          el.addEventListener(type, listener);
-        }, this);
+        // elements.forEach(function(el) {
+        //   el.addEventListener(type, listener);
+        // }, this);
       };
 
       var removeEventListener = function removeEventListener(type, listener) {
-        elements.forEach(function(el) {
-          el.removeEventListener(type, listener);
-        }, this);
+        // elements.forEach(function(el) {
+        //   el.removeEventListener(type, listener);
+        // }, this);
       };
 
       var anotherWordCloudStart = function anotherWordCloudStart() {
@@ -1160,7 +1106,7 @@ if (!window.clearImmediate) {
         var drawn = putWord(settings.list[i]);
         var canceled = !sendEvent('wordclouddrawn', true, {
           item: settings.list[i], drawn: drawn });
-        if (exceedTime() || canceled) {
+        if (exceedTime()) {
           stoppingFunction(timer);
           settings.abort();
           sendEvent('wordcloudabort', false);
